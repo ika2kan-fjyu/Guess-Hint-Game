@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Critical Hints</title>
+<style>
+  :root{
+    --bg:#0e0f13;
+    --panel:#171a21;
+    --muted:#9aa4b2;
+    --text:#eef2f7;
+    --brand:#6ea8fe;
+    --ok:#47d18c;
+    --bad:#ff7373;
+    --chip:#ff7373;
+    --chip2:#263243;
+    --border:#2a3142;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+    line-height:1.6;
+  }
+  .container{max-width:1100px;margin:0 auto;padding:20px}
+  h1{font-size:24px;margin:0 0 12px}
+  .subtitle{color:var(--muted);margin-bottom:18px}
+  .grid{display:grid;gap:16px}
+  @media(min-width:900px){ .grid{grid-template-columns: 1.1fr 1fr} }
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+  }
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  label{font-weight:600}
+  input[type="text"], textarea, select{
+    width:100%; background:#0f131b; color:var(--text); border:1px solid var(--border);
+    border-radius:10px; padding:12px; font-size:16px; outline:none;
+  }
+  textarea{min-height:120px; resize:vertical}
+  button{
+    appearance:none; border:none; border-radius:12px; padding:10px 14px; font-size:15px; font-weight:700;
+    background:var(--brand); color:#081325; cursor:pointer; transition: transform .03s ease, opacity .15s ease;
+  }
+  button:disabled{opacity:.45; cursor:not-allowed}
+  button:active{transform: translateY(1px)}
+  .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text)}
+  .btn-ok{background:var(--ok); color:#052615}
+  .btn-bad{background:var(--bad); color:#2a0a0a}
+  .btn-wide{width:100%}
+  .chips{display:flex; gap:8px; flex-wrap:wrap}
+  .chip{
+    background:var(--chip2); border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-weight:600; color:#d5dbea
+  }
+  .chip.active{background:var(--chip); color:#fff}
+  .muted{color:var(--muted)}
+  .title-row{display:flex; justify-content:space-between; align-items:center; gap:10px}
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th,td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
+  th{color:#c7cfdb}
+  .win{background:linear-gradient(90deg, rgba(255,215,0,.08), transparent)}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace}
+  .divider{height:1px; background:var(--border); margin:12px 0}
+  .tag{font-size:12px; color:#cbd3e0; background:#253048; padding:2px 8px; border-radius:999px; border:1px solid var(--border)}
+  .right{margin-left:auto}
+  .center{text-align:center}
+  .danger{color:#ff9b9b}
+  .success{color:#a6f3c3}
+  .hintbox{display:grid; gap:10px; grid-template-columns:1fr}
+  @media(min-width:700px){ .hintbox{ grid-template-columns: 1fr 1fr } }
+  small.help{display:block;color:var(--muted); margin-top:4px}
+  /* ルール用スタイル */
+  .rules-card details{
+  width:100%;
+  }
+  .rules-card summary{
+  list-style:none;
+  cursor:pointer;
+  font-weight:700;
+  display:flex; align-items:center; gap:8px;
+  }
+  .rules-card summary::-webkit-details-marker{ display:none; }
+  .rules-card summary::after{
+  content:"▼"; font-size:12px; opacity:.6; margin-left:auto;
+  transition: transform .15s ease;
+  }
+  .rules-card details[open] summary::after{ transform: rotate(180deg); }
+  .rules-list{
+  margin-top:10px; color:var(--text);
+  }
+  .rules-list li + li{ margin-top:6px; }
+  .rules-note{ color:var(--muted); font-size:12px; margin-top:8px; display:block; }
+  /* 確認モーダル */
+  .modal-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:none; align-items:center; justify-content:center; z-index:1000;
+  }
+  .modal{
+  width:min(92vw,420px); background:var(--panel); border:1px solid var(--border);
+  border-radius:14px; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal .title-row{ margin-bottom:8px }
+  .modal .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:14px }
+</style>
+</head>
+<body>
+  <!-- 新規ゲーム 確認モーダル -->
+  <div id="confirmModal" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="newGameTitle">
+    <div class="title-row">
+    <strong id="newGameTitle">新規ゲームを開始しますか？</strong>
+    </div>
+    <div class="muted">
+    現在のポイント・履歴はリセットされます。この操作は元に戻せません。
+    </div>
+    <div class="actions">
+    <button id="cancelNewGame" class="btn-ghost">キャンセル</button>
+    <button id="confirmNewGame" class="btn-bad">リセット</button>
+    </div>
+  </div>
+  </div>
+  <div class="container">
+    <h1>Guess Hint Game</h1>
+    <div class="subtitle">
+      <p>
+        1人の「Guesser（当てる人）」を、ほかのプレイヤー全員が<b>“1語だけのヒント”</b> で正解へ導く心理戦パーティゲームです。
+      </p>
+      <p>
+        ヒントは「1つの名詞または形容詞」だけ。
+        少ないヒントで当てれば、Guesserは高得点！
+      </p>
+      <p>
+        ただし、ヒントを出す側は、伝わりやすすぎると高得点を取られる。伝わらなさすぎるとペナルティを受ける。
+        <b>「ギリギリ伝わりそうな1語」の駆け引きが、このゲームの一番の面白さです。</b>
+      </p>
+      <p>
+        全員が1度ずつGuesserを担当し、最終的に
+        獲得ポイント × ペナルティ倍率
+        で順位を競います。
+      </p>
+      <p>
+        <b>絶妙ヒントのセンスが問われる、新感覚の“言葉の戦い”を楽しもう！</b>
+      </p>
+
+      <button id="resetBtn" class="btn-ghost">新規ゲーム</button>
+    </div>
+    <div class="card rules-card" style="margin-top:10px">
+      <details id="rulesBox">
+        <summary>ゲームルール（クリックで表示/非表示）</summary>
+        <ol class="rules-list">
+        <li>参加するプレイヤー全員の名前を入力し、参加順を決めます。入力した順番に各ラウンドで Guesser が巡ります。ヒントを出す順番でもあります。</li>
+        <li>最初のラウンドで Guesser（当てる人）を決定します。Guesser 以外は “ヒント役” となります。</li>
+        <li>ヒント役どうしで相談して、このラウンドの <b class="danger">正解（名詞1つ）</b> を Guesser に知られないように決めます。</b>(正解例: 「太陽」「徳川家康」など)</li>
+        <li>ヒント役は順番に <b class="danger">名詞または形容詞の1語だけ</b> を提示し、Guesser はヒントをもらうたびに 1 回だけ回答します。(ヒント例: 「明るい」「武士」など)</li>
+        <li>Guesser が正解した場合、Guesserはその時点のヒント数に応じてポイントを獲得します。<br>
+          獲得ポイントは <b class="success mono">プレイヤー数 − ヒント数</b> で計算します。<br>
+          <b>ヒントが少ないほど高得点！</b></li>
+        <li>ヒント役のプレイヤー全員がヒントを出してもGuesserが正解できなかった場合、<b>ヒント役のプレイヤー全員</b>に <b class="danger">ペナルティ +1</b> が加算されます。このペナルティの数が多いほど、最終ポイントが少なくなります。</li>
+        <li>ラウンド終了後、<b>「審議」</b>でプレイヤーごとのペナルティを任意に増減できます。<br>
+          全員で話し合い、よくなかったヒントにペナルティを与えるなど、審議してください。<br>
+          1 ラウンド終了ごとに、審議は 1 回行います。</li>
+        <li>次のラウンドでは、参加順に沿って次のプレイヤーが Guesser となり、同じ流れで進行します。</li>
+        <li>プレイヤー全員が1回ずつ Guesser を担当したらゲーム終了。<br>
+          最終ポイントは <b class="success mono">獲得ポイントにペナルティ倍率をペナルティの数だけ掛け算して</b> 計算します。<br>
+          (例: 獲得ポイントが10点で、ペナルティが +2 、ペナルティ倍率が 0.5 の時は、10 × 0.5 × 0.5 = 2.5点)<br>
+          ペナルティが多いほど獲得ポイントが減っていきます。</li>
+        <li>順位は最終ポイントが高い順。同点の場合はペナルティの少ない方、さらに同じならプレイヤー順が早い方が上位です。</li>
+        </ol>
+        <span class="rules-note">※ Guesser に正解が見えないよう、正解入力時は画面を隠すなど運用で調整してください。</span>
+      </details>
+    </div>
+
+    <!-- 設定 -->
+    <div id="setup" class="card">
+      <div class="title-row"><strong>プレイヤー登録</strong></div>
+      <div class="row">
+        <div style="flex:1 1 300px">
+          <label for="names">プレイヤー名（1行につき1人の名前を入力）</label>
+          <textarea id="names" placeholder="サンプル
+石田
+柴田
+若林
+山内
+"></textarea>
+          <small class="help">※ 2人以上必須。空行は無視されます。</small>
+          <small class="danger">※ 入力した順番でラウンド内が進みます！後から順番は変えられません。</small>
+        </div>
+        <div style="flex:1 1 260px">
+          <label for="starter">最初のGuesser</label>
+          <select id="starter"><option value="">（上の名前を入れると選べます）</option></select>
+          <small class="help">自動的に先頭の人が最初のGuesserとして選択されます。</small>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div style="flex:1 1 260px">
+          <label for="penaltyBase">ペナルティ倍率（0.5〜1.0）</label>
+          <input id="penaltyBase" type="number" min="0.5" max="1.0" step="0.05" value="0.8" />
+          <small class="help">
+            <b>「ペナルティ倍率」が小さいほどペナルティが重くなります。</b><br>
+            ゆるい: 0.95<br>
+            ふつう: 0.8<br>
+            きつい: 0.5
+          </small>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="startBtn">ゲーム開始</button>
+        <button id="fillDemo" class="btn-ghost">サンプルを入れる</button>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:16px; display:none" id="playArea">
+      <!-- 右：進行 -->
+      <div class="card" id="flowCard">
+        <div class="title-row">
+          <strong>ラウンド <span id="roundNow">1</span>/<span id="roundMax">–</span></strong>
+          <span class="tag" id="phaseTag">正解入力</span>
+        </div>
+        <div class="divider"></div>
+
+        <!-- ステップ：正解 -->
+        <div id="secretStep">
+          <div class="row">
+            <div class="chip active">Guesser：<strong id="guesserName"></strong></div>
+            <div class="chips" id="providerChips"></div>
+          </div>
+          <div style="margin-top:10px">
+            <label for="secretInput">このラウンドの正解（名詞）</label>
+            <input id="secretInput" type="text" placeholder="正解（名詞）" />
+            <small class="danger">Guesserに見られないように注意して！</small>
+            <div class="row" style="margin-top:8px">
+              <button id="lockSecret" class="">正解を確定</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ステップ：ヒント＆回答 -->
+        <div id="hintStep" style="display:none">
+          <div class="row">
+            <div class="chip active">Guesser：<strong id="AName"></strong></div>
+            <div class="chip">ヒント役：<strong id="currentProvider"></strong></div>
+            <div class="chip">ヒント番号：<span id="hintCount">1</span></div>
+          </div>
+          <div class="hintbox" style="margin-top:12px">
+            <div>
+              <label for="hintInput">Hint</label>
+              <input id="hintInput" type="text" placeholder="ヒントを入力" />
+            </div>
+            <div>
+              <label for="guessInput">Guess</label>
+              <input id="guessInput" type="text" placeholder="Guesserの回答を入力" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button id="markCorrect" class="btn-ok">正解！</button>
+            <button id="markWrong" class="btn-bad">不正解（次のヒント役へ）</button>
+          </div>
+          <div id="pointsPreview" class="muted" style="margin-top:6px"></div>
+        </div>
+
+        <!-- ラウンド結果 -->
+        <div id="roundResult" style="display:none; margin-top:8px">
+          <div id="roundSummary"></div>
+          <div id="manualPenalty" style="margin-top:10px"></div>
+          <div class="row" style="margin-top:8px">
+            <button id="nextRound" class="btn-wide">次のラウンドへ →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 左：ポイント＆履歴 -->
+      <div class="card">
+        <div class="title-row">
+          <strong>ポイントボード</strong>
+        </div>
+        <div class="divider"></div>
+        <table id="scoreTable">
+          <thead>
+            <tr><th>#</th><th>名前</th><th class="mono">獲得ポイント<sup>※1</sup></th><th>ペナ</th><th class="mono">最終ポイント<sup>※2</sup></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <small class="help">※1 獲得ポイント = プレイヤー数 - ヒント数<br>※2 最終ポイント = 獲得ポイント × ペナルティ倍率<sup>ペナルティ数</sup><br>ゲーム終了時に確定して順位付けします。</small>
+
+        <div class="divider"></div>
+        <!-- 今ラウンドの履歴 -->
+        <div class="title-row"><strong>今ラウンドの履歴</strong><span class="muted" id="curHistMeta"></span></div>
+        <div id="currentHistory"></div>
+
+        <div class="divider"></div>
+        <!-- 過去ラウンド履歴（トグル表示） -->
+        <div class="title-row">
+          <strong>過去ラウンド履歴</strong>
+          <button id="togglePastHistory" class="btn-ghost">表示</button>
+        </div>
+        <div id="pastHistoryWrap" style="display:none">
+          <span class="muted" id="historyCount"></span>
+          <div id="history" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 最終結果 -->
+    <div id="finalArea" class="card" style="display:none; margin-top:16px">
+      <div class="title-row">
+        <strong>最終結果</strong>
+        <span class="tag">ゲーム終了</span>
+      </div>
+      <div class="divider"></div>
+      <div id="finalWinner" class="center" style="font-size:18px; margin-bottom:8px"></div>
+      <table id="finalTable">
+        <thead>
+          <tr><th>順位</th><th>名前</th><th class="mono">獲得ポイント</th><th>ペナルティ</th><th class="mono">最終ポイント</th><th class="muted">（初期順）</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="row" style="margin-top:12px">
+        <button id="playAgain" class="btn-wide">もう一度あそぶ</button>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+
+  const state = {
+    players: [], // {name, raw:0, pen:0, order}
+    roundIndex: 0,
+    guesserIdx: 0,
+    providers: [],
+    hintTurn: 0,
+    secret: "",
+    steps: [], // {provider, hint, guess, correct}
+    logs: [],  // 過去ラウンド
+    showPastHistory: false,
+    started: false,
+    finished: false,
+    penaltyBase: 0.8
+  };
+
+  // --- ユーティリティ ---
+  function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+  function fmt(n){ if (Number.isInteger(n)) return String(n); const s=(Math.round(n*100)/100).toFixed(2); return s.replace(/\.00$/,'').replace(/0$/,''); }
+  function computeProviders(guesserIdx){
+    const N = state.players.length, arr=[];
+    for(let i=1;i<N;i++) arr.push((guesserIdx+i)%N);
+    return arr;
+  }
+  const currentA = ()=> state.players[state.guesserIdx];
+  const currentProviderIdx = ()=> state.providers[state.hintTurn];
+  const currentProvider = ()=> state.players[currentProviderIdx()];
+  const hintCountSoFar = ()=> state.hintTurn + 1;
+  const calcPointsOnCorrect = ()=> state.players.length - hintCountSoFar();
+  function updateStarterOptions(){
+    const names = parseNames(); const sel = $("starter"); sel.innerHTML = "";
+    if (names.length===0){ sel.innerHTML = `<option value="">（上の名前を入れると選べます）</option>`; return; }
+    names.forEach((nm,i)=>{ const op=document.createElement("option"); op.value=i; op.textContent=nm; sel.appendChild(op); });
+    sel.value="0";
+  }
+  function parseNames(){ return $("names").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+
+  // --- UI ---
+  function renderScoreboard(){
+    const tbody = $("scoreTable").querySelector("tbody"); 
+    tbody.innerHTML="";
+    state.players.forEach(p=>{
+      const base = state.penaltyBase || 0.8;
+      const final = (p.raw||0) * Math.pow(base, p.pen || 0);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${p.order+1}</td><td>${p.name}</td><td class="mono">${fmt(p.raw||0)}</td><td>${p.pen||0}</td><td class="mono">${fmt(final)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  function renderProvidersChips(){
+    const wrap = $("providerChips"); wrap.innerHTML="";
+    state.providers.forEach(idx=>{
+      const span=document.createElement("span");
+      span.className="chip";
+      span.textContent="ヒント役 : " + state.players[idx].name;
+      wrap.appendChild(span);
+    });
+  }
+  function setPhaseTag(t){ $("phaseTag").textContent = t; }
+
+  function renderSecretStep(){
+    $("roundNow").textContent = state.roundIndex+1;
+    $("roundMax").textContent = state.players.length;
+    $("guesserName").textContent = currentA().name;
+    renderProvidersChips();
+    $("secretInput").value = state.secret;
+    setPhaseTag("正解入力");
+    $("secretStep").style.display = "";
+    $("hintStep").style.display = "none";
+    $("roundResult").style.display = "none";
+    renderCurrentRoundHistory();
+  }
+  function renderHintStep(){
+    $("AName").textContent = currentA().name;
+    $("currentProvider").textContent = currentProvider().name;
+    $("hintCount").textContent = hintCountSoFar();
+    $("hintInput").value = "";
+    $("guessInput").value = "";
+    $("pointsPreview").textContent = `このヒントで正解なら Guesser ${currentA().name} は ${fmt(calcPointsOnCorrect())} 点ゲット！`;
+    setPhaseTag("ヒント＆回答");
+    $("secretStep").style.display = "none";
+    $("hintStep").style.display = "";
+    $("roundResult").style.display = "none";
+    renderCurrentRoundHistory();
+    $("hintInput").focus();
+  }
+  function renderRoundResult(summaryHtml){
+    $("roundSummary").innerHTML = summaryHtml;
+    setPhaseTag("ラウンド結果");
+    $("secretStep").style.display = "none";
+    $("hintStep").style.display = "none";
+    $("roundResult").style.display = "";
+    renderManualPenaltyPanel();
+  }
+
+  function renderManualPenaltyPanel(){
+    const wrap = $("manualPenalty");
+    if(!wrap) return;
+
+    let rows = state.players.map((p, i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td>${p.name}</td>
+        <td class="mono">${fmt(p.raw||0)}</td>
+        <td class="mono">${p.pen||0}</td>
+        <td style="width:130px">
+          <input type="number" id="penInput-${i}" class="pen-input" step="1" value="0"
+                style="width:100%;text-align:right" placeholder="例: -1 / 2">
+        </td>
+      </tr>
+    `).join("");
+
+    wrap.innerHTML = `
+      <div class="divider"></div>
+      <details>
+        <summary>審議(手動でペナルティを追加)</summary>
+        <small class="muted" style="margin:8px 0 6px">
+          任意のプレイヤーのペナルティを増減できます。変更後「ペナルティを適用」をクリック。
+        </small>
+        <small class="danger">ラウンド内で変更を適用できるのは一度のみです。</small>
+        <table style="width:100%; border-collapse:collapse">
+          <thead>
+            <tr><th>#</th><th>名前</th><th class="mono">獲得Pt</th><th>現ペナ</th><th>増減</th></tr>
+          </thead>
+          <tbody>${rows || ''}</tbody>
+        </table>
+        <div id="manualPenaltyActions" class="row" style="margin-top:10px; justify-content:flex-end">
+          <button id="applyManualPenalty" class="btn-bad">ペナルティを適用</button>
+        </div>
+        <div id="manualPenaltyMsg" class="muted" style="margin-top:6px"></div>
+      </details>
+    `;
+
+    $("applyManualPenalty").addEventListener("click", ()=>{
+      const changes = [];
+      const errors = [];
+
+      state.players.forEach((p, i)=>{
+        const el = $("penInput-" + i);
+        if(!el) return;
+        const raw = el.value.trim();
+        if(raw === "" || raw === "0") return;          // 0 or 空 → 何もしない
+        const v = Number(raw);
+        if(!Number.isFinite(v) || !Number.isInteger(v)){
+          errors.push(`${p.name}: 整数で入力してください（例: -2, -1, 1, 2）`);
+          return;
+        }
+        p.pen = (p.pen||0) + v;                         // ±加算
+        changes.push({ idx:i, delta:v });
+      });
+
+      if(errors.length){
+        $("manualPenaltyMsg").innerHTML = `<span class="danger">${errors.join(" / ")}</span>`;
+        return;
+      }
+      if(changes.length === 0){
+        $("manualPenaltyMsg").textContent = "適用する変更はありません。";
+        return;
+      }
+
+      // スコアボード更新
+      renderScoreboard();
+
+      // 直近ラウンドのログに追記（履歴で見えるように）
+      const last = state.logs[state.logs.length - 1];
+      if(last){
+        if(!last.manualPenalties) last.manualPenalties = [];
+        changes.forEach(ch => last.manualPenalties.push(ch));
+        renderHistory();
+      }
+
+      // 入力を0に戻す
+      state.players.forEach((_, i)=>{
+        const el = $("penInput-" + i);
+        if(el) el.value = 0;
+      });
+
+      const msg = changes
+        .map(ch => `${state.players[ch.idx].name} ${(ch.delta>=0?'+':'')}${ch.delta}`)
+        .join(" / ");
+      $("manualPenaltyMsg").innerHTML = `審議結果：${msg}`;
+      // === ここからロック処理 ===
+      // 入力欄を編集不可に
+      document.querySelectorAll("#manualPenalty .pen-input, .pen-input").forEach(el=>{
+        el.setAttribute("disabled","disabled");
+      });
+  
+      // ボタンを消して、確定表示に差し替え
+      const actions = $("manualPenaltyActions");
+      if (actions) {
+        actions.innerHTML = `<span class="muted">このラウンドの審議は <strong>確定</strong> しました。ポイントボードを確認し、次のラウンドへ進んでください。</span>`;
+      }
+    });
+  }
+
+  // 今ラウンド履歴
+  function renderCurrentRoundHistory(){
+    const box = $("currentHistory"); const meta = $("curHistMeta");
+    if(!state.started){ meta.textContent=""; box.innerHTML='<span class="muted">（まだ開始していません）</span>'; return; }
+    const provNames = state.providers.map(i=>state.players[i].name).join(" → ");
+    meta.textContent = `Guesser: ${currentA().name} , ヒント役: ${provNames}`;
+    if(state.steps.length===0){ box.innerHTML='<span class="muted">（まだ履歴はありません）</span>'; return; }
+    box.innerHTML = state.steps.map((st,i)=>`
+      <div class="row" style="gap:6px">
+        <span class="tag">#${i+1}</span>
+        <span class="chip">${state.players[st.provider].name} のヒント</span>
+        <span class="muted">「${escapeHtml(st.hint||"")}」</span>
+        <span>→「${escapeHtml(st.guess||"")}」</span>
+        ${st.correct?`<span class="success">正解</span>`:`<span class="danger">❌不正解</span>`}
+      </div>
+    `).join("");
+  }
+
+  // 過去ラウンド履歴
+  function renderHistory(){
+    const box = $("history"); box.innerHTML="";
+    $("historyCount").textContent = `${state.logs.length}件`;
+    state.logs.forEach((log,i)=>{
+      const provNames = log.providers.map(idx=>state.players[idx].name);
+      const stepsHtml = log.steps.map((st,k)=>`
+        <div class="row" style="gap:6px">
+          <span class="tag">#${k+1}</span>
+          <span class="chip">${state.players[st.provider].name} のヒント</span>
+          <span class="muted">「${escapeHtml(st.hint||"")}」</span>
+          <span>→「${escapeHtml(st.guess||"")}」</span>
+          ${st.correct?`<span class="success">正解</span>`:`<span class="danger">不正解</span>`}
+        </div>`).join("");
+      const card=document.createElement("div");
+      card.className="card"; card.style.padding="12px"; card.style.marginTop="10px";
+      card.innerHTML = `
+        <div class="title-row">
+          <strong>ラウンド${i+1} Guesser: ${log.guesser}</strong>
+          <span class="muted">ヒント役：${provNames.join(" → ")}</span>
+        </div>
+        <div class="divider"></div>
+        <div>正解：<span class="mono">${escapeHtml(log.secret)}</span></div>
+        <div style="margin-top:6px">${stepsHtml || '<span class="muted">（記録なし）</span>'}</div>
+        <div class="divider"></div>
+        <div>${log.success
+          ? `🎉 正解！ Guesser ${log.guesser} に <strong>${fmt(log.points)}</strong> 点`
+          : `❌ 不正解。ヒント役全員 に <strong>+1</strong> ペナルティ`}
+        ${log.manualPenalties && log.manualPenalties.length ? `
+          <div class="divider"></div>
+          <div>手動ペナルティ：
+            ${log.manualPenalties.map(mp => {
+              const s = (mp.delta >= 0 ? "+" : "") + mp.delta;
+              return `${state.players[mp.idx].name} に <strong>${s}</strong>`;
+            }).join(" / ")}
+          </div>
+        ` : ``}
+        </div>`;
+      box.appendChild(card);
+    });
+  }
+  function updatePastHistoryDisplay(){
+    $("pastHistoryWrap").style.display = state.showPastHistory ? "" : "none";
+    $("togglePastHistory").textContent = state.showPastHistory ? "隠す" : "表示";
+  }
+
+  // --- 進行 ---
+  function startGame(names, starterIdx){
+    state.players = names.map((name,i)=>({name, raw:0, pen:0, order:i}));
+    starterIdx = clamp(Number(starterIdx ?? 0), 0, state.players.length-1);
+    state.roundIndex = 0;
+    state.guesserIdx = starterIdx;
+    state.providers = computeProviders(state.guesserIdx);
+    state.hintTurn = 0;
+    state.secret = "";
+    state.steps = [];
+    state.logs = [];
+    state.showPastHistory = false;
+    state.started = true; state.finished = false;
+
+    $("setup").style.display = "none";
+    $("playArea").style.display = "grid";
+    renderScoreboard();
+    renderSecretStep();
+    renderHistory();
+    updatePastHistoryDisplay();
+  }
+
+  function lockSecret(){
+    const s = $("secretInput").value.trim();
+    if(!s){ alert("正解（名詞）を入力してください"); return; }
+    state.secret = s;
+    renderHintStep();
+  }
+
+  function onCorrect(){
+    const hint = $("hintInput").value.trim();
+    const guess = $("guessInput").value.trim();
+    if(!hint || !guess){ alert("ヒントと回答を入力してください"); return; }
+    const provider = currentProviderIdx();
+    const points = calcPointsOnCorrect();
+    currentA().raw += points;
+
+    state.steps.push({provider, hint, guess, correct:true});
+    renderCurrentRoundHistory();
+
+    state.logs.push({
+      round: state.roundIndex+1,
+      guesser: currentA().name,
+      providers: [...state.providers],
+      secret: state.secret,
+      steps: [...state.steps],
+      success: true,
+      points
+    });
+
+    renderScoreboard();
+    renderHistory();
+
+    const summary = `
+      <div class="success">🎉 正解！ Guesser『${currentA().name}』に <strong>${fmt(points)}</strong> 点</div>
+      <small class="muted">獲得ポイント計算: プレイヤー ${state.players.length}人, ヒント数 ${hintCountSoFar()}<br>プレイヤー数 - ヒント数 = ${state.players.length} − ${hintCountSoFar()} = ${fmt(points)}</small>`;
+    renderRoundResult(summary);
+  }
+
+  function onWrong(){
+    const hint = $("hintInput").value.trim();
+    const guess = $("guessInput").value.trim();
+    if(!hint || !guess){ alert("ヒントと回答を入力してください"); return; }
+    const provider = currentProviderIdx();
+    state.steps.push({provider, hint, guess, correct:false});
+    renderCurrentRoundHistory();
+
+    if(state.hintTurn < state.providers.length - 1){
+      state.hintTurn++;
+      renderHintStep();
+      return;
+    }
+
+    // 全員提示でも不正解 → ヒント役全員に+1ペナ
+    state.providers.forEach(idx => { state.players[idx].pen = (state.players[idx].pen||0) + 1; });
+
+    state.logs.push({
+      round: state.roundIndex+1,
+      guesser: currentA().name,
+      providers: [...state.providers],
+      secret: state.secret,
+      steps: [...state.steps],
+      success: false
+    });
+
+    renderScoreboard();
+    renderHistory();
+
+    const provNames = state.providers.map(i=>state.players[i].name).join("、");
+    const summary = `
+      <div class="danger">❌ 全員のヒントでもGuesserは正解できず…</div>
+      <div>ヒント役 <strong>${provNames}</strong> に <strong>+1</strong> ペナルティ</div>`;
+    renderRoundResult(summary);
+  }
+
+  function nextRound(){
+    state.roundIndex++;
+    if(state.roundIndex >= state.players.length){ finishGame(); return; }
+    state.guesserIdx = state.providers[0];
+    state.providers = computeProviders(state.guesserIdx);
+    state.hintTurn = 0;
+    state.secret = "";
+    state.steps = [];
+    renderScoreboard();
+    renderSecretStep();
+  }
+
+  function finishGame(){
+    state.started=false; state.finished=true;
+    const base = state.penaltyBase || 0.8;
+    const ranked = state.players.map(p=>({...p, final: (p.raw||0) * Math.pow(base, p.pen || 0)}))
+      .sort((a,b)=> b.final-a.final || a.pen-(b.pen) || a.order-b.order);
+    $("playArea").style.display="none";
+    $("finalArea").style.display="";
+
+    const tbody = $("finalTable").querySelector("tbody"); tbody.innerHTML="";
+    ranked.forEach((p,i)=>{
+      const tr=document.createElement("tr"); if(i===0) tr.classList.add("win");
+      tr.innerHTML = `<td>${i+1}</td><td>${p.name}</td><td class="mono">${fmt(p.raw||0)}</td><td>${p.pen||0}</td><td class="mono">${fmt(p.final)}</td><td class="muted">${p.order+1}</td>`;
+      tbody.appendChild(tr);
+    });
+    const champ = ranked[0];
+    $("finalWinner").innerHTML = `🏆 優勝：<strong>${champ.name}</strong> （最終ポイント <span class="mono">${fmt(champ.final)}</span>）`;
+  }
+
+  function resetAll(){
+    state.players=[]; state.logs=[]; state.steps=[]; state.showPastHistory=false;
+    state.started=false; state.finished=false;
+    $("setup").style.display=""; $("playArea").style.display="none"; $("finalArea").style.display="none";
+    $("names").value=""; $("starter").innerHTML=`<option value="">（上の名前を入れると選べます）</option>`;
+    $("currentHistory").innerHTML=""; $("curHistMeta").textContent="";
+    updatePastHistoryDisplay();
+  }
+
+  // --- イベント ---
+  $("names").addEventListener("input", updateStarterOptions);
+  $("fillDemo").addEventListener("click", ()=>{ $("names").value="石田\n柴田\n山内\n若林"; updateStarterOptions(); });
+  $("startBtn").addEventListener("click", ()=>{
+    const names=parseNames(); if(names.length<2){ alert("プレイヤーは2人以上が必要です"); return; }
+    const mRaw = $("penaltyBase").value;
+    const m = Number(mRaw);
+    if (!Number.isFinite(m) || m < 0.5 || m > 1.0) {
+      alert("ペナルティ倍率 は 0.5〜1.0 の範囲で入力してください。");
+      return;
+    }
+    state.penaltyBase = m;
+    const starterVal=$("starter").value; const starterIdx=starterVal===""?0:Number(starterVal); startGame(names, starterIdx);
+  });
+
+  $("lockSecret").addEventListener("click", lockSecret);
+  $("markCorrect").addEventListener("click", onCorrect);
+  $("markWrong").addEventListener("click", onWrong);
+  $("nextRound").addEventListener("click", nextRound);
+  // ===== モーダル開閉ユーティリティ =====
+  function openConfirmModal(){
+    const m = $("confirmModal");
+    if(!m) return;
+    m.style.display = "flex";
+    m.setAttribute("aria-hidden","false");
+    // 初期フォーカスを「リセット」へ
+    $("confirmNewGame")?.focus();
+  }
+  function closeConfirmModal(){
+    const m = $("confirmModal");
+    if(!m) return;
+    m.style.display = "none";
+    m.setAttribute("aria-hidden","true");
+    // 元のボタンにフォーカスを戻す
+    $("resetBtn")?.focus();
+  }
+
+  // 「新規ゲーム」クリック → モーダル表示
+  $("resetBtn").addEventListener("click", (e)=>{
+    e.preventDefault();
+    openConfirmModal();
+  });
+
+  // モーダル内のボタン
+  $("confirmNewGame").addEventListener("click", ()=>{
+    closeConfirmModal();
+    resetAll();           // ← 既存の処理を実行
+  });
+  $("cancelNewGame").addEventListener("click", ()=>{
+    closeConfirmModal();  // 何もしないで閉じる
+  });
+
+  // 背景クリックや ESC でも閉じる
+  $("confirmModal").addEventListener("click", (e)=>{
+    if(e.target === $("confirmModal")) closeConfirmModal();
+  });
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape" && $("confirmModal")?.style.display === "flex"){
+      closeConfirmModal();
+    }
+  });
+
+  $("playAgain").addEventListener("click", resetAll);
+
+  $("togglePastHistory").addEventListener("click", ()=>{ state.showPastHistory=!state.showPastHistory; updatePastHistoryDisplay(); });
+
+  // 任意：Enterショートカットを戻したい場合は以下を有効化
+  // $("secretInput").addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); lockSecret(); }});
+  // $("guessInput").addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); onCorrect(); }});
+
+})();
+</script>
+</body>
+</html>
