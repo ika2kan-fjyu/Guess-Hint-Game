@@ -440,15 +440,15 @@
 
     wrap.innerHTML = `
       <div class="divider"></div>
-      <details>
-        <summary>審議(手動でペナルティを追加)</summary>
+      <div>
+        <summary>審議</summary>
         <small class="muted" style="margin:8px 0 6px">
           任意のプレイヤーのペナルティを増減できます。変更後「ペナルティを適用」をクリック。
         </small>
         <small class="danger">ラウンド内で変更を適用できるのは一度のみです。</small>
         <table style="width:100%; border-collapse:collapse">
           <thead>
-            <tr><th>#</th><th>名前</th><th class="mono">獲得Pt</th><th>現ペナ</th><th>増減</th></tr>
+            <tr><th>#</th><th>名前</th><th class="mono">獲得Pt</th><th>現ペナルティ</th><th>増減</th></tr>
           </thead>
           <tbody>${rows || ''}</tbody>
         </table>
@@ -456,7 +456,7 @@
           <button id="applyManualPenalty" class="btn-bad">ペナルティを適用</button>
         </div>
         <div id="manualPenaltyMsg" class="muted" style="margin-top:6px"></div>
-      </details>
+      </div>
     `;
 
     $("applyManualPenalty").addEventListener("click", ()=>{
